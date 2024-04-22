@@ -118,17 +118,17 @@ class Encoding:
 
     def encodeFormula(self, formula):
         seq = []
-        n = []
+        idx = []
         o, d = self.encodeOutputToken('<SOS>')
         seq.append(o)
-        n.append(d)
+        idx.append(d)
         for i in formula:
             o, d = self.encodeOutputToken(i)
             seq.append(o)
-            n.append(d)
+            idx.append(d)
         o, d = self.encodeOutputToken('<EOS>')
         seq.append(o)
-        n.append(d)
+        idx.append(d)
         
         padding = OUTPUT_LENGTH - len(seq)
         if padding < 0:
@@ -136,8 +136,28 @@ class Encoding:
         for i in range(padding):
             o, d = self.encodeOutputToken('<PAD>')
             seq.append(o)
-            n.append(d)
-        return seq, n
+            idx.append(d)
+        return seq, idx
+
+    def encodeNegateFormula(self, formula, idx):
+        open_par_one_hot, open_par_idx = self.encodeOutputToken('(')
+        close_par_one_hot, close_par_idx = self.encodeOutputToken(')')
+        negate_one_hot, negate_idx = self.encodeOutputToken('!')
+        _, eos_idx = self.encodeOutputToken('<EOS>')
+        formula_list = formula.tolist()
+        idx_list = idx.tolist()
+        eos_idx_i = idx_list.index(eos_idx)
+        formula_list.insert(eos_idx_i, close_par_one_hot)
+        formula_list.insert(1, open_par_one_hot)
+        formula_list.insert(1, negate_one_hot)
+        idx_list.insert(eos_idx_i, close_par_idx)
+        idx_list.insert(1, open_par_idx)
+        idx_list.insert(1, negate_idx)
+
+        idx = np.array(idx_list[:-3])
+        formula = np.array(formula_list[:-3])
+        
+        return formula, idx
 
 ENCODING = Encoding()
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -221,7 +241,7 @@ class MLTLDataset(Dataset):
         return outtraces[0], outtraces[1], outencformula, outrawformula
 
 # Leave the batch size as 1
-TRAIN_DATASET = MLTLDataset("dataset/SEQ2SEQ/TRAIN", 500000, 1)
+TRAIN_DATASET = MLTLDataset("dataset/SEQ2SEQ/TRAIN", 1, 1)
 TEST_DATASET = MLTLDataset("dataset/SEQ2SEQ/TEST", 5000, 1)
 
 def collate_fn(minibatch):
@@ -256,8 +276,8 @@ def collate_fn(minibatch):
 TRAIN_DATALOADER = DataLoader(TRAIN_DATASET, collate_fn=collate_fn, batch_size=1, shuffle=True)
 TEST_DATALOADER = DataLoader(TEST_DATASET, collate_fn=collate_fn, batch_size=1, shuffle=False)
 
-EPOCH = 1000
-EPOCH_SAVE = 50
+EPOCH = 1
+EPOCH_SAVE = 1
 
 if __name__ == "__main__":
     pos, neg, formula, r = next(iter(TRAIN_DATALOADER))
