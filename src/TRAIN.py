@@ -6,6 +6,8 @@ import torch
 import torch.nn as nn
 import numpy as np
 
+from tqdm import tqdm
+
 from MODEL import EncoderNN, DecoderNN 
 from SETUP import DEVICE, ENCODING, TRAIN_DATALOADER, TEST_DATALOADER, OUTPUT_LENGTH, EPOCH, EPOCH_SAVE
 
@@ -21,7 +23,7 @@ def train():
     print("BEGIN TRAINING")
     for epoch in range(EPOCH):
         total_loss = 0
-        for data in TRAIN_DATALOADER:
+        for data in tqdm(TRAIN_DATALOADER):
             pos, neg, enc_formula, raw_formula = data
             
             encoder_optimizer.zero_grad()
@@ -77,7 +79,7 @@ def test(at_epoch):
     decoder.to(DEVICE)
     criterion = nn.NLLLoss().to(DEVICE)
     print("BEGIN TESTING")
-    for data in TEST_DATALOADER:
+    for data in tqdm(TEST_DATALOADER):
         pos, neg, enc_formula, raw_formula = data
         formula = [ENCODING.encodeOutputToken('<SOS>')[0]]
         

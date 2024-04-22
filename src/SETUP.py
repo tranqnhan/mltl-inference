@@ -205,7 +205,6 @@ class MLTLDataset(Dataset):
                         traces_list.append(traces)
                     break
                 except Exception as ex:
-                    print(ex, flush=True)
                     continue
             
             # Saving things to files
