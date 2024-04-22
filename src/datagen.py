@@ -13,6 +13,7 @@ def random_sampling(formula: str,
     Returns a tuple of positive and negative samples (pos, neg)
     """
     pos, neg = [], []
+    n, m = get_n(formula), comp_len(formula)
     target_num = samples // 2
     batch_size = samples
     while len(pos) < target_num or len(neg) < target_num:
@@ -45,14 +46,51 @@ def west_sampling(formula: str,
     Samples traces for the formula using the West algorithm
     Returns a tuple of positive and negative samples (pos, neg)
     """
+
+    retries = 0
+    max_retries = 10
+
     pos, neg = set(), set()
     target_num = samples // 2
     regex = west(formula)
+    
+    if (regex is None):
+        raise Exception(f'WEST TIMEOUT: {formula} \n')
+    elif (len(regex) == 0):
+        with open("dataset/SEQ2SEQ/timeout.txt", "a") as file:
+            file.write(f'NO REGEX: {formula} \n')
+            file.flush()
+        raise Exception(f'NO REGEX: {formula} \n')
+    elif (regex[0] is None):
+        with open("dataset/SEQ2SEQ/timeout.txt", "a") as file:
+            file.write(f'NONE? REGEX: {formula} \n')
+            file.flush()
+        raise Exception(f'NONE? REGEX: {formula} \n') 
+    
     while len(pos) < target_num:
+        L = len(pos)
         pos.add(random_trace(regex, m_delta))
-    regex = west("!" + formula)
+        if (L == len(pos)):
+            retries += 1
+            if (retries == max_retries):
+                with open("dataset/SEQ2SEQ/timeout.txt", "a") as file:
+                    file.write(f'NOT ENOUGH SAMPLES: {formula} \n')
+                    file.flush()
+                raise Exception(f'NOT ENOUGH SAMPLES: {formula} \n')
+    retries = 0
+
+    regex = west("!(" + formula + ")")
     while len(neg) < target_num:
+        L = len(neg)
         neg.add(random_trace(regex, m_delta))
+        if (L == len(neg)):
+            retries += 1
+            if (retries == max_retries):
+                with open("dataset/SEQ2SEQ/timeout.txt", "a") as file:
+                    file.write(f'NOT ENOUGH SAMPLES: {"!(" + formula + ")"} \n')
+                    file.flush()
+                raise Exception(f'NOT ENOUGH SAMPLES: {formula} \n')
+        
     pos, neg = list(pos), list(neg)
     pos = [trace.split(",") for trace in pos]
     neg = [trace.split(",") for trace in neg]

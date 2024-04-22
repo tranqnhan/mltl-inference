@@ -9,7 +9,9 @@
 #include <tuple>
 
 using namespace std;
-
+#include <filesystem>
+namespace fs = std::filesystem;
+/*
 // https://stackoverflow.com/questions/55474690/stdfilesystem-has-not-been-declared-after-including-experimental-filesystem
 #ifndef __has_include
   static_assert(false, "__has_include not supported");
@@ -25,6 +27,7 @@ using namespace std;
      namespace fs = boost::filesystem;
 #  endif
 #endif
+*/
 
 /*
  * Input: string S
@@ -123,10 +126,10 @@ vector<NamedTrace> read_batch_from_file(string in) {
 	// iterate over files in directory 
 	for (const auto & entry : fs::directory_iterator(in)) {
 		// read from file
-		vector<string> trace = read_from_file(entry.path());
+		vector<string> trace = read_from_file(entry.path().string());
 		// create NamedTrace
 		NamedTrace nt;
-		nt.name = entry.path();
+		nt.name = entry.path().string();
 		nt.trace = trace;
 		// add to batch
 		batch.push_back(nt);

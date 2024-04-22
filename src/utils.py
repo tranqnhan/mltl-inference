@@ -67,7 +67,8 @@ def interpret_batch(formula: str, traces) -> dict:
         results = {}
         with open(outfile, 'r') as f:
             for line in f:
-                trace_file, verdict = line.strip().split(":")
+                trace_file, verdict = line.strip().split(".txt : ")
+                trace_file += ".txt"
                 results[trace_file.strip()] = True if verdict.strip() == "1" else False
         return results
     
@@ -97,10 +98,28 @@ def west(formula: str) -> list[str]:
     Output
         result: the set of all possible traces that satisfy the formula
     '''
-    subprocess.run(f"cd WEST/ && {WEST_PATH} \'{formula}\' && cd ..", 
-                stdout=subprocess.DEVNULL, 
-                stderr=subprocess.DEVNULL, 
-                shell=True)
+
+    try:
+        if (sys.platform == 'win32'):
+            subprocess.run(f"cd WEST ; .\\west '{formula}'; cd ..",
+                        stdout=subprocess.DEVNULL, 
+                        stderr=subprocess.DEVNULL,
+                        executable="C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+                        shell=True, 
+                        timeout=10)
+        else:
+            subprocess.run(f"cd WEST/ && {WEST_PATH} \'{formula}\' && cd ..", 
+                    stdout=subprocess.DEVNULL, 
+                    stderr=subprocess.DEVNULL, 
+                    shell=True,
+                    timeout=10)
+            
+    except subprocess.TimeoutExpired:
+        with open("dataset/SEQ2SEQ/timeout.txt", "a") as file:
+            file.write(f'WEST TIMEOUT: {formula} \n')
+            file.flush()
+        return None
+
     outfile = os.path.join('WEST', 'output', 'output.txt')
     with open(outfile, 'r') as f:
         result = f.read().splitlines()
@@ -158,14 +177,14 @@ def comp_len(formula: str) -> int:
         elif node.children[0].data == "unary_temp_conn":
             interval = str(node.children[1].pretty())
             # find all numbers in interval
-            r1 = [int(num) for num in re.findall("\d+", interval)]
+            r1 = [int(num) for num in re.findall(r"\d+", interval)]
             ub = max(r1)
             return ub + complen_helper(node.children[2])
         
         elif node.children[1].data == "binary_temp_conn":
             interval = str(node.children[2].pretty())
             # find all numbers in interval
-            r1 = [int(num) for num in re.findall("\d+", interval)]
+            r1 = [int(num) for num in re.findall(r"\d+", interval)]
             ub = max(r1)
             return ub + max(complen_helper(node.children[0]),
                             complen_helper(node.children[3]))
@@ -209,7 +228,7 @@ def get_n(formula: str) -> int:
     Output
         n: the number of propositional variables in the formula
     '''
-    propvars = re.findall("p\d+", formula)
+    propvars = re.findall(r"p\d+", formula)
     propvars = [int(prop[1:]) for prop in propvars]
     return max(propvars) + 1
 
@@ -225,16 +244,16 @@ def scale_intervals(formula: str, MAX: int) -> str:
     Guarantees that the largest number in all intervals is equal to MAX
     '''
     # find all intervals
-    intervals = re.findall("\[\s*\d+\s*,\s*\d+\s*\]", formula)
+    intervals = re.findall(r"\[\s*\d+\s*,\s*\d+\s*\]", formula)
     # find largest number in all intervals
     max_bound = 0
     for interval in intervals:
-        r1 = [int(num) for num in re.findall("\d+", interval)]
+        r1 = [int(num) for num in re.findall(r"\d+", interval)]
         max_bound = max(max_bound, max(r1))
 
     # find all numbers in interval
     for interval in intervals:
-        r1 = [int(num) for num in re.findall("\d+", interval)]
+        r1 = [int(num) for num in re.findall(r"\d+", interval)]
         # scale interval
         r1 = [num * MAX / max_bound for num in r1]
         # replace interval

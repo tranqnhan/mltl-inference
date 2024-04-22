@@ -1,12 +1,11 @@
 all: interpret interpret_batch
 
 interpret:
-	mkdir -p bin
-	g++ ./interpret.cpp ./evaluate_mltl.cpp ./utils.cpp -o ./bin/interpret
+	mkdir bin
+	g++ -Wall -g -std=c++20 ./interpret.cpp ./evaluate_mltl.cpp ./utils.cpp -o ./bin/interpret
 
 interpret_batch:
-	mkdir -p bin
-	g++ ./interpret_batch.cpp ./evaluate_mltl.cpp ./utils.cpp -o ./bin/interpret_batch
+	g++ -Wall -g -std=c++20 ./interpret_batch.cpp ./evaluate_mltl.cpp ./utils.cpp -o ./bin/interpret_batch
 
 clean:
 	rm -rf ./bin
