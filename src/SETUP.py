@@ -156,7 +156,7 @@ class Encoding:
 
         idx = np.array(idx_list[:-3])
         formula = np.array(formula_list[:-3])
-        
+
         return formula, idx
 
 ENCODING = Encoding()
@@ -241,7 +241,7 @@ class MLTLDataset(Dataset):
         return outtraces[0], outtraces[1], outencformula, outrawformula
 
 # Leave the batch size as 1
-TRAIN_DATASET = MLTLDataset("dataset/SEQ2SEQ/TRAIN", 1, 1)
+TRAIN_DATASET = MLTLDataset("dataset/SEQ2SEQ/TRAIN", 500000, 1)
 TEST_DATASET = MLTLDataset("dataset/SEQ2SEQ/TEST", 5000, 1)
 
 def collate_fn(minibatch):
@@ -276,8 +276,8 @@ def collate_fn(minibatch):
 TRAIN_DATALOADER = DataLoader(TRAIN_DATASET, collate_fn=collate_fn, batch_size=1, shuffle=True)
 TEST_DATALOADER = DataLoader(TEST_DATASET, collate_fn=collate_fn, batch_size=1, shuffle=False)
 
-EPOCH = 1
-EPOCH_SAVE = 1
+EPOCH = 1000
+EPOCH_SAVE = 50
 
 if __name__ == "__main__":
     pos, neg, formula, r = next(iter(TRAIN_DATALOADER))
