@@ -183,8 +183,8 @@ class MLTLDataset(Dataset):
                     depth = random.randint(1, MAX_DEPTH)
                     
                     formula_raw = generate_random_formula(num_vars, depth, TEMPORAL_PROB, MAX_TRACE_DELTA, MAX_BOUND_VAL)
-                    # + EOS and SOS
-                    while(len(formula_raw) + 2 > OUTPUT_LENGTH):
+                    # + EOS and SOS and !()
+                    while(len(formula_raw) + 5 > OUTPUT_LENGTH):
                         formula_raw = generate_random_formula(num_vars, depth, TEMPORAL_PROB, MAX_TRACE_DELTA, MAX_BOUND_VAL)
                     
                     formula_string = "".join(formula_raw)
