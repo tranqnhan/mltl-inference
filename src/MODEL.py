@@ -60,7 +60,6 @@ class DecoderNN(nn.Module):
     def __init__(self):
         super(DecoderNN, self).__init__()
         self.transformer_heads = 8 # embed_dim must be divisible by num_heads
-        print(ENCODING.outDimensionality)
         self.num_transformer_layer = 4
         transformer_dec_layer = nn.TransformerDecoderLayer(d_model=ENCODING.outDimensionality, nhead=self.transformer_heads, dropout=0.0, batch_first=True)
         self.transformer_dec = nn.TransformerDecoder(decoder_layer=transformer_dec_layer, num_layers=self.num_transformer_layer).to(DEVICE)

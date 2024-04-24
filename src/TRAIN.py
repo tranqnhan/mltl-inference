@@ -15,8 +15,8 @@ def train():
     encoder = EncoderNN().to(DEVICE)
     decoder = DecoderNN().to(DEVICE)
 
-    encoder_optimizer = torch.optim.Adam(encoder.parameters(), lr=0.0001)
-    decoder_optimizer = torch.optim.Adam(decoder.parameters(), lr=0.0001)
+    encoder_optimizer = torch.optim.Adam(encoder.parameters(), lr=0.001)
+    decoder_optimizer = torch.optim.Adam(decoder.parameters(), lr=0.001)
     criterion = nn.NLLLoss().to(DEVICE)
 
     tgt_mask = nn.Transformer().generate_square_subsequent_mask(sz = OUTPUT_LENGTH - 1).to(DEVICE)

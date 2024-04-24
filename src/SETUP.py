@@ -2,7 +2,7 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 import numpy as np
 import os
-from datagen import random_sampling, west_sampling
+from datagen import generate_traces, west_sampling
 from random_mltl_formulas import generate_random_formula
 import random
 import pickle
@@ -60,8 +60,6 @@ class Encoding:
         self.outDimensionality = 128
 
         self.decoder = list(self.outSymbol.keys())
-        print(self.decoder)
-        print("Encoding initialized!")
         
 
     def encodeInputToken(self, idx):
@@ -195,7 +193,7 @@ class MLTLDataset(Dataset):
                     
                     k = random.randint(0, self.sets_per_formula-1)
                     for t in range(self.sets_per_formula):
-                        pos_raw, neg_raw = west_sampling(formula_string, TOTAL_INPUT_TRACES, MAX_M_DELTA)
+                        pos_raw, neg_raw = generate_traces(formula_string, TOTAL_INPUT_TRACES, MAX_M_DELTA)
                         
                         traces = ENCODING.encodeTrace(pos_raw, neg_raw)
                         if (t == k):
@@ -236,47 +234,45 @@ class MLTLDataset(Dataset):
             filename = f'{self.directory}/{idx}/rawformula.txt'
             with open(filename, 'r') as formula_file:
                 formula_string = formula_file.read()
-
         return outtraces[0], outtraces[1], outencformula, outrawformula
 
 # Leave the batch size as 1
-TRAIN_DATASET = MLTLDataset("dataset/SEQ2SEQ/TRAIN", 500000, 1)
-TEST_DATASET = MLTLDataset("dataset/SEQ2SEQ/TEST", 5000, 1)
+TRAIN_DATASET = MLTLDataset("dataset/SEQ2SEQ/TRAIN", 10000, 1)
+TEST_DATASET = MLTLDataset("dataset/SEQ2SEQ/TEST", 200, 1)
 
 def collate_fn(minibatch):
-    p = TOTAL_INPUT_TRACES // 2
-    l = len(minibatch)
+    num_of_traces = TOTAL_INPUT_TRACES // 2
+    num_of_batches = len(minibatch)
     newpos = []
     newneg = []
     enc_formulas = []
     raw_formulas = []
 
-    for i in range(p):
+    for i in range(num_of_traces):
         newneg.append([])
-        newpos.append([])
+        newpos.append([])        
 
-    for i in range(p):
-        for j in range(l):
+    for i in range(num_of_traces):
+        for j in range(num_of_batches):
             pos, neg, _, _ = minibatch[j]
-
             newpos[i].append(pos[i])
             newneg[i].append(neg[i])
-
-    for i in range(p):
-        newneg[i] = torch.tensor(newneg[i]).float()
-        newpos[i] = torch.tensor(newpos[i]).float()
-
     
     for _, _, formula, raw_formula in minibatch:
         enc_formulas.append(formula)
         raw_formulas.append(raw_formula)
+
+    for i in range(num_of_traces):
+        newpos[i] = torch.tensor(newpos[i])
+        newneg[i] = torch.tensor(newneg[i])
+
     return newpos, newneg, np.array(enc_formulas), np.array(raw_formulas)
 
 TRAIN_DATALOADER = DataLoader(TRAIN_DATASET, collate_fn=collate_fn, batch_size=1, shuffle=True)
 TEST_DATALOADER = DataLoader(TEST_DATASET, collate_fn=collate_fn, batch_size=1, shuffle=False)
 
-EPOCH = 1000
-EPOCH_SAVE = 50
+EPOCH = 100
+EPOCH_SAVE = 1
 
 if __name__ == "__main__":
     pos, neg, formula, r = next(iter(TRAIN_DATALOADER))
