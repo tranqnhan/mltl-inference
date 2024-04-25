@@ -173,37 +173,42 @@ class MLTLDataset(Dataset):
 
     def __getitem__(self, idx):
         if (not os.path.isdir(f'{self.directory}/{idx}')):
-            while(True):
-                try:
-                    # Generate
-                    pos_raw_list = []
-                    neg_raw_list = []
-                    traces_list = []
-                    num_vars = random.randint(1, MAX_TRAIN_VARIABLES)
-                    depth = random.randint(1, MAX_DEPTH)
-                    
+            # Generate
+            pos_raw_list = []
+            neg_raw_list = []
+            traces_list = []
+            num_vars = random.randint(1, MAX_TRAIN_VARIABLES)
+            depth = random.randint(1, MAX_DEPTH)
+            
+            formula_raw = generate_random_formula(num_vars, depth, TEMPORAL_PROB, MAX_TRACE_DELTA, MAX_BOUND_VAL)
+            # + EOS and SOS and !()
+            while(len(formula_raw) + 5 > OUTPUT_LENGTH):
+                formula_raw = generate_random_formula(num_vars, depth, TEMPORAL_PROB, MAX_TRACE_DELTA, MAX_BOUND_VAL)
+            
+            formula_string = "".join(formula_raw)
+            
+            formula, formula_raw = ENCODING.encodeFormula(formula_raw)
+            
+            k = random.randint(0, self.sets_per_formula-1)
+            for t in range(self.sets_per_formula):
+                pos_raw, neg_raw = generate_traces(formula_string, TOTAL_INPUT_TRACES, MAX_M_DELTA)
+
+                while (pos_raw is None):
                     formula_raw = generate_random_formula(num_vars, depth, TEMPORAL_PROB, MAX_TRACE_DELTA, MAX_BOUND_VAL)
                     # + EOS and SOS and !()
                     while(len(formula_raw) + 5 > OUTPUT_LENGTH):
                         formula_raw = generate_random_formula(num_vars, depth, TEMPORAL_PROB, MAX_TRACE_DELTA, MAX_BOUND_VAL)
                     
                     formula_string = "".join(formula_raw)
-                    
                     formula, formula_raw = ENCODING.encodeFormula(formula_raw)
-                    
-                    k = random.randint(0, self.sets_per_formula-1)
-                    for t in range(self.sets_per_formula):
-                        pos_raw, neg_raw = generate_traces(formula_string, TOTAL_INPUT_TRACES, MAX_M_DELTA)
-                        
-                        traces = ENCODING.encodeTrace(pos_raw, neg_raw)
-                        if (t == k):
-                            outtraces = traces
-                        pos_raw_list.append(pos_raw)
-                        neg_raw_list.append(neg_raw)
-                        traces_list.append(traces)
-                    break
-                except Exception as ex:
-                    continue
+                    pos_raw, neg_raw = generate_traces(formula_string, TOTAL_INPUT_TRACES, MAX_M_DELTA)
+
+                traces = ENCODING.encodeTrace(pos_raw, neg_raw)
+                if (t == k):
+                    outtraces = traces
+                pos_raw_list.append(pos_raw)
+                neg_raw_list.append(neg_raw)
+                traces_list.append(traces)
             
             # Saving things to files
             filename = f'{self.directory}/{idx}/rawformula.txt'
@@ -243,30 +248,32 @@ TEST_DATASET = MLTLDataset("dataset/SEQ2SEQ/TEST", 200, 1)
 def collate_fn(minibatch):
     num_of_traces = TOTAL_INPUT_TRACES // 2
     num_of_batches = len(minibatch)
-    newpos = []
-    newneg = []
-    enc_formulas = []
-    raw_formulas = []
+    pos = []
+    neg = []
+    
+    one_hot_encoded_formulas = []
+    token_encoded_formulas = []
+
 
     for i in range(num_of_traces):
-        newneg.append([])
-        newpos.append([])        
+        neg.append([])
+        pos.append([])        
 
     for i in range(num_of_traces):
         for j in range(num_of_batches):
-            pos, neg, _, _ = minibatch[j]
-            newpos[i].append(pos[i])
-            newneg[i].append(neg[i])
+            posm, negm, _, _ = minibatch[j]
+            pos[i].append(posm[i])
+            neg[i].append(negm[i])
     
-    for _, _, formula, raw_formula in minibatch:
-        enc_formulas.append(formula)
-        raw_formulas.append(raw_formula)
+    for _, _, one_hot_formula, token_formula in minibatch:
+        one_hot_encoded_formulas.append(one_hot_formula)
+        token_encoded_formulas.append(token_formula)
 
     for i in range(num_of_traces):
-        newpos[i] = torch.tensor(newpos[i])
-        newneg[i] = torch.tensor(newneg[i])
+        pos[i] = torch.tensor(pos[i])
+        neg[i] = torch.tensor(neg[i])
 
-    return newpos, newneg, np.array(enc_formulas), np.array(raw_formulas)
+    return pos, neg, np.array(one_hot_encoded_formulas), np.array(token_encoded_formulas)
 
 TRAIN_DATALOADER = DataLoader(TRAIN_DATASET, collate_fn=collate_fn, batch_size=1, shuffle=True)
 TEST_DATALOADER = DataLoader(TEST_DATASET, collate_fn=collate_fn, batch_size=1, shuffle=False)
@@ -274,5 +281,66 @@ TEST_DATALOADER = DataLoader(TEST_DATASET, collate_fn=collate_fn, batch_size=1, 
 EPOCH = 100
 EPOCH_SAVE = 1
 
+def datagen(directory, num_of_examples):
+    for idx in range(num_of_examples):
+        print(f"WORKING ON EXAMPLE {idx}", flush=True)
+        if os.path.isdir(f'{directory}/{idx}'):
+            continue
+        # Generate
+        pos_raw_list = []
+        neg_raw_list = []
+        traces_list = []
+        num_vars = random.randint(1, MAX_TRAIN_VARIABLES)
+        depth = random.randint(1, MAX_DEPTH)
+        
+        formula_raw = generate_random_formula(num_vars, depth, TEMPORAL_PROB, MAX_TRACE_DELTA, MAX_BOUND_VAL)
+        # + EOS and SOS and !()
+        while(len(formula_raw) + 5 > OUTPUT_LENGTH):
+            formula_raw = generate_random_formula(num_vars, depth, TEMPORAL_PROB, MAX_TRACE_DELTA, MAX_BOUND_VAL)
+        
+        formula_string = "".join(formula_raw)
+        
+        formula, formula_raw = ENCODING.encodeFormula(formula_raw)
+        
+        pos_raw, neg_raw = generate_traces(formula_string, TOTAL_INPUT_TRACES, MAX_M_DELTA)
+
+        while (pos_raw is None):
+            formula_raw = generate_random_formula(num_vars, depth, TEMPORAL_PROB, MAX_TRACE_DELTA, MAX_BOUND_VAL)
+            # + EOS and SOS and !()
+            while(len(formula_raw) + 5 > OUTPUT_LENGTH):
+                formula_raw = generate_random_formula(num_vars, depth, TEMPORAL_PROB, MAX_TRACE_DELTA, MAX_BOUND_VAL)
+            
+            formula_string = "".join(formula_raw)
+            formula, formula_raw = ENCODING.encodeFormula(formula_raw)
+            pos_raw, neg_raw = generate_traces(formula_string, TOTAL_INPUT_TRACES, MAX_M_DELTA)
+
+        traces = ENCODING.encodeTrace(pos_raw, neg_raw)
+        
+        pos_raw_list.append(pos_raw)
+        neg_raw_list.append(neg_raw)
+        traces_list.append(traces)
+    
+        # Saving things to files
+        filename = f'{directory}/{idx}/rawformula.txt'
+        os.makedirs(os.path.dirname(filename), exist_ok=True)
+        with open(filename, 'w') as formula_file:
+            formula_file.write(formula_string)
+        
+        outrawformula = np.array(formula_raw)
+        np.save(f'{directory}/{idx}/rawformula', outrawformula)
+
+        outencformula = np.array(formula)
+        np.save(f'{directory}/{idx}/encodedformula', outencformula)
+
+        for t in range(len(traces_list)):
+            with open(f'{directory}/{idx}/postrace{t+1}.pickle', 'wb') as trace_file:
+                pickle.dump(pos_raw_list[t], trace_file)
+            with open(f'{directory}/{idx}/negtrace{t+1}.pickle', 'wb') as trace_file:
+                pickle.dump(neg_raw_list[t], trace_file)
+            with open(f'{directory}/{idx}/encodedtrace{t+1}.pickle', 'wb') as trace_file:
+                pickle.dump(traces_list[t], trace_file)
+
+        print(f"FINISH EXAMPLE IDX: {idx}", flush=True)
+
 if __name__ == "__main__":
-    pos, neg, formula, r = next(iter(TRAIN_DATALOADER))
+    datagen("dataset/SEQ2SEQ/TRAIN", 1000)

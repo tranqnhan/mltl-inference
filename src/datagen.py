@@ -3,11 +3,14 @@ import numpy as np
 import argparse
 import random
 import time
+import os, sys
+sys.path.append(os.path.dirname(os.path.realpath(__file__)) + '/libmltl/lib')
 import libmltl as mltl
 
 def random_sampling(formula: str, 
                     samples: int,
                     m_delta: int,
+                    max_traces: int=1e5, 
                     ) -> tuple[list, list]:
     """
     Randomly samples traces for the formula
@@ -17,27 +20,36 @@ def random_sampling(formula: str,
     n, m = get_n(formula), comp_len(formula)
     target_num = samples // 2
     batch_size = samples
-    while len(pos) < target_num or len(neg) < target_num:
-        traces = np.random.randint(0, 2, (batch_size, m+np.random.randint(0, m_delta+1), n))
-        traces = [trace.tolist() for trace in traces]
-        for i, trace in enumerate(traces):
-            traces[i] = [str(row).replace("[", "").replace("]", "").replace("," , "").replace(" ", "") for row in trace]
-        results = interpret_batch(formula, traces)
-        pos_idx, neg_idx = [], []
-        for i, value in results.items():
-            if value:
-                pos_idx.append(i)
-            else:
-                neg_idx.append(i)
-        batch_pos = [traces[i] for i in pos_idx]
-        batch_neg = [traces[i] for i in neg_idx]
-        if len(pos) < target_num:
-            pos.extend(batch_pos)
-            pos = pos[:min(len(pos), target_num)]
-        if len(neg) < target_num:
-            neg.extend(batch_neg)
-            neg = neg[:min(len(neg), target_num)]
-    return pos[:target_num], neg[:target_num]
+    attempts = 0
+    while attempts < max_traces:
+        attempts += batch_size
+        if len(pos) < target_num or len(neg) < target_num:
+            traces = np.random.randint(0, 2, (batch_size, m+np.random.randint(0, m_delta+1), n))
+            traces = [trace.tolist() for trace in traces]
+            for i, trace in enumerate(traces):
+                traces[i] = [str(row).replace("[", "").replace("]", "").replace("," , "").replace(" ", "") for row in trace]
+            results = interpret_batch(formula, traces)
+            pos_idx, neg_idx = [], []
+            for i, value in results.items():
+                if value:
+                    pos_idx.append(i)
+                else:
+                    neg_idx.append(i)
+            batch_pos = [traces[i] for i in pos_idx]
+            batch_neg = [traces[i] for i in neg_idx]
+            if len(pos) < target_num:
+                pos.extend(batch_pos)
+                pos = pos[:min(len(pos), target_num)]
+            if len(neg) < target_num:
+                neg.extend(batch_neg)
+                neg = neg[:min(len(neg), target_num)]
+
+        elif len(pos) == target_num and len(neg) == target_num:
+            return pos[:target_num], neg[:target_num]
+        
+        else:
+            break
+    return None, None
 
 def west_sampling(formula: str, 
                   samples: int,
@@ -127,6 +139,14 @@ def generate_traces(formula: str,
     return None, None
 
 if __name__ == '__main__':
+    # formula = "F[0,2](p0 & p1)"
+    # pos, neg = random_sampling(formula, 256, 5)
+    # if pos is None:
+    #     print("timed out")
+    # else:
+    #     print(len(pos), len(neg))
+    # exit()
+
     parser = argparse.ArgumentParser(description='Creates a dataset')
     # required argument: input folder containing formula.txt file
     parser.add_argument('dataset_folder', type=str, 

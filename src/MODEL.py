@@ -25,13 +25,9 @@ class EncoderNN(nn.Module):
         
     def avg_lstm(self):
         for lstms in [self.poslstms, self.neglstms]:
-            states = []
-            for lstm in lstms:
-                states.append(lstm.state_dict())
-
-            avg = {}
-            for k in states[0]:
-                avg[k] = sum([state[k] for state in states]) / len(states)
+            states = [lstm.state_dict() for lstm in lstms]
+            
+            avg = {k: sum([state[k] for state in states]) / len(states) for k in states[0]}
 
             for key in avg.keys():
                 states[0][key] = avg[key]
