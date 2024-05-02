@@ -14,7 +14,7 @@ MAX_VARIABLES = 10
 MAX_TRAIN_VARIABLES = 4
 MAX_DEPTH = 3
 
-MAX_M_DELTA = 30
+MAX_M_DELTA = 20
 
 TEMPORAL_PROB = .5
 MAX_TRACE_DELTA = 20
@@ -105,6 +105,19 @@ class Encoding:
         final = []
         for encoded in formula:
             i = np.array(encoded).argmax()
+            if (i >= len(self.decoder)):
+                v = "?"
+            else:
+                v = self.decoder[i]
+            if (v == '<PAD>'):
+                break
+            final.append(v)
+        return "".join(final)
+
+    def decodeRawFormula(self, formula):
+        final = []
+        for encoded in formula:
+            i = encoded
             if (i >= len(self.decoder)):
                 v = "?"
             else:
@@ -242,8 +255,8 @@ class MLTLDataset(Dataset):
         return outtraces[0], outtraces[1], outencformula, outrawformula
 
 # Leave the batch size as 1
-TRAIN_DATASET = MLTLDataset("dataset/SEQ2SEQ/TRAIN", 10000, 1)
-TEST_DATASET = MLTLDataset("dataset/SEQ2SEQ/TEST", 200, 1)
+TRAIN_DATASET = MLTLDataset("dataset/SEQ2SEQ/TRAIN", 100, 1)
+TEST_DATASET = MLTLDataset("dataset/SEQ2SEQ/TEST", 20, 1)
 
 def collate_fn(minibatch):
     num_of_traces = TOTAL_INPUT_TRACES // 2
@@ -343,4 +356,4 @@ def datagen(directory, num_of_examples):
         print(f"FINISH EXAMPLE IDX: {idx}", flush=True)
 
 if __name__ == "__main__":
-    datagen("dataset/SEQ2SEQ/TRAIN", 1000)
+    datagen("dataset/SEQ2SEQ/TRAIN", 100)

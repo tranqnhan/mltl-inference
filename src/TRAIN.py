@@ -59,7 +59,7 @@ def train():
             encoder.avg_lstm()
             total_loss += loss.item()
 
-        total_loss = total_loss / (len(TRAIN_DATALOADER) * 2)
+        total_loss = total_loss / ((len(TRAIN_DATALOADER) * 2))
         print(f"LOSS: {total_loss}")
         if (epoch % EPOCH_SAVE == 0):
             torch.save(encoder.state_dict(), f"ENCODER_NN_STATES_{epoch}")
@@ -82,9 +82,8 @@ def test(at_epoch):
     for data in tqdm(TEST_DATALOADER):
         pos, neg, enc_formula, raw_formula = data
         formula = [ENCODING.encodeOutputToken('<SOS>')[0]]
-        
         mem = encoder(pos, neg)
-        for i in range(255): 
+        for _ in range(255): 
             tgt_mask = nn.Transformer().generate_square_subsequent_mask(sz = len(formula)).to(DEVICE)
             formula_tensor = torch.tensor([formula]).to(DEVICE)
             pred = decoder(mem, formula_tensor, tgt_mask, None)
@@ -92,8 +91,9 @@ def test(at_epoch):
             val = [0.0] * 128
             val[next_item] = 1.0
             formula.append(val)
+            print(next_item)
             # Stop if model predicts end of sentence
-            if next_item == ENCODING.outSymbol['<EOS>']:
+            if next_item == ENCODING.outSymbol['<EOS>'] or next_item == ENCODING.outSymbol['<PAD>'] :
                 padding = OUTPUT_LENGTH - len(formula)
                 if padding > 0:
                     for _ in range(padding):
@@ -103,9 +103,11 @@ def test(at_epoch):
         output_f = torch.tensor([raw_formula[0][1:]]).to(DEVICE)
         predict_f = torch.tensor([formula[1:]]).to(DEVICE)
 
+        print(f"{ENCODING.decodeRawFormula(raw_formula[0])} -> {ENCODING.decodeFormula(formula[1:])}  ")
+        
         loss = criterion(predict_f.mT.float(), output_f.long())
         print(f"TEST LOSS: {loss.item()}")
 
 if __name__ == '__main__':
-    at_epoch = train()
-    test(at_epoch)
+    #at_epoch = train()
+    test(4)
